@@ -12,9 +12,12 @@
 import matplotlib.pyplot as plt
 #plt.ion() #key? does this show up???
           # arrrrgh. 
-	  # WHY can't I just fucking MAKE A FUCKING PLOT FUCK JESUS
- # the distinction between ion vs -i vs noninteractive python and arrrhghghghghg
-	  
 fig, ax = plt.subplots()
 
-#plt.show()
+#plt.show() #doing this explicitly means it blocks here
+# "in noninteractive mode", ie without calling .ion(),
+# matplotlib has two paths here:
+#  -if you run with python -i, it displays the plot
+#  -if you do not run with -i, it simply exits and you never see your result
+
+# What I ~really~ want is a simple way to display
