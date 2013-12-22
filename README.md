@@ -13,8 +13,8 @@ First, clone this repo.
 
 If you can the dependencies installed on your system, pyscope should run on Windows, Linux, and OS X.
 
-Pyscope is a py3k application, so you need to get SciPy and PySoundCard installed in their python3 forms.
-SciPy is almost certainly available in your distribution's package manager, but
+Pyscope is a py3k application, so you need to get SciPy, matplotlib, and PySoundCard installed in their python3 forms.
+SciPy/matplotlib are almost certainly available in your distribution's package manager or are available from http://scipy.org, but
 PySoundCard might not be. However, it is on pipi and you can install it with "sudo pip install PySoundCard".
 
 ## Running
