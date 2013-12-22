@@ -10,88 +10,76 @@ import time
 from pysoundcard import *
 from pysoundfile import *
 
-from scipy import *
+#from scipy import *
 
-
-
-#plt.ion() #key? does this show up???
 fig, ax = plt.subplots()
+#
 
-#plt.subplots_adjust(left=0.25, bottom=0.25)
-l, = plt.plot(arange(44100), lw=.5, color='green')
+l, = plt.plot([1], lw=.5, color='green') #initialize some space for us to write to
 plt.xlabel("time (s)")
 plt.ylabel("amplitude")
-print(l)
-print(l.get_data())
-#time.sleep(1)
 
-MAXPT = 0
-LAST = 0
+
+def bounds(signal):
+	if signal.dtype == np.int16:
+		return 2**15
+	elif signal.dtype == np.uint16:
+		return 2**16
+	elif signal.dtype == np.float or signal.dtype == np.float32 or signal.dtype == np.float64:
+		return 1
+	else:  #panic?
+		print(signal.dtype)
+		return 1 #???
 
 def pysoundcard_callback(in_data, frame_count, time_info, status):
-	global LAST
-	NOW = time.time()
 	# pysoundcard is giving 32 channels on my machine??
 	# but the upper channels are empty and the lower ones are dupes?
-	signal = (in_data[:,1] + in_data[:,0])/2
+	# weird...
+	signal = in_data.mean(axis=1) #sometimes in_data comes with multiple channels. in lieu of knowing what to do with them
+	signal/=bounds(signal) #normalize to -1 to 1
 	
-	#period = time_info['input_adc_time']
-	#if period < 0:
-	
-	period = NOW - LAST
-	LAST = time.time()
-	if period > 1: #coerce overly long periods (probably due to soundcard hangs) to no-ops
-		return (None, continue_flag)
+	print("energy:", abs(signal).sum())
+	print(in_data.shape)
 
+	#import time as _time
+	#_time.sleep(.1) # artificially cause underruns
 	
-	#print(period, MAXPT)
-	#print("energy:", abs(signal).sum(), "/%.2fms" % (period*1e3,))
+	#NB: shadows 'time' module
+	time = np.arange(0, len(signal)) / fs #TODO: don't reference a global! #TODO: cache this t
+	l.set_data((time, signal))
 	
-	t = arange(0, len(signal))/len(signal) * period
-	a = signal;
-	l.set_data((t, a))
-	
-	global MAXPT
-	#MAXPT = .005
-	if period > MAXPT:
-		MAXPT = period
-	#print(max(a))
-	
-	#max.set_xlim((0, period*.6)) #..huh?
-	ax.set_xlim((0, MAXPT*.2)) #..huh?
+	ax.set_xlim((time[0], time[-1]))
 	ax.set_ylim((-1, 1))
-	#ax.set_ylim((min(a), max(a)))
-	
-	fig.canvas.draw()
-	#if period > 0: time.sleep(period)
+
+	fig.canvas.draw() #TODO: can this be draw_idle?
+
 	return (None, continue_flag)
+	#return (np.zeros_like(in_data), continue_flag)
 
 fs = 44100                 #sample rate to open the card at. Your card probably has a fixed set of these.
-block_length = 44100//(12) #given a known sample rate, defines how long a single window is
-s = Stream(sample_rate=fs, block_length=block_length, callback=pysoundcard_callback, output_device=False)
-print("starting soundcard")
+block_length = fs//(16) #given a known sample rate, defines how long a single window is
+#block_length =2000
 
+
+RUNNING = True
+def fix_it():
+	"Work around some kind of bug involving overdriving alsa"
+	if RUNNING:
+		print("Soundcard crashed. resetting:")
+		s.stop() #pysoundcard has a state glitch: it demands I stop it before starting it again, even tho is_active() might say False
+		s.start()
+
+
+print("Starting soundcard:")
+dev = default_input_device();
+dev['input_channels'] = 1; #PortAudio wants everything to have 32 channels by default
+api = list(apis())[dev['host_api_index']]
+s = Stream(sample_rate=fs, block_length=block_length, input_device=dev, callback=pysoundcard_callback, finished_callback=fix_it, output_device=False)
+plt.title("pyscope: API '%s' device '%s'" % (api['name'], dev['name']))
 s.start()
-
-#TODO: if I need to use a thread anyway, put the stream reader in a thread so I can control block reads
-#TODO: memoize the zeros we feed back to the soundcard
 
 # fuck ..there's no way to display the matplotlib GUI and spin in a readloop in the same thread
 from threading import Thread
 
-RUNNING = True
-def fix_it():
-	"Work around some kind of overdriving bug in alsa"
-	global RUNNING
-	while RUNNING:
-		if not s.is_active():
-			print("Soundcard crashed. resetting:")
-			s.stop()  #pysoundcard has a state glitch: it demands I stop it before starting it again, even tho is_active() might say False
-			s.start()
-		time.sleep(1)
-FIXIT = Thread(target=fix_it)
-FIXIT.start()
-
 plt.show()
 RUNNING = False
-FIXIT.join()
