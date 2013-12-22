@@ -35,8 +35,8 @@ def pysoundcard_callback(in_data, frame_count, time_info, status):
 	
 	period = NOW - LAST
 	LAST = time.time()
-	if period > 1: #coerce overly long periods (probably due to hangs) to noops
-		return (zeros_like(in_data), continue_flag)
+	if period > 1: #coerce overly long periods (probably due to soundcard hangs) to no-ops
+		return (None, continue_flag)
 
 	
 	#print(period, MAXPT)
@@ -59,36 +59,33 @@ def pysoundcard_callback(in_data, frame_count, time_info, status):
 	
 	fig.canvas.draw()
 	#if period > 0: time.sleep(period)
-	return (zeros_like(in_data), continue_flag)
+	return (None, continue_flag)
 
-# how do i get plt to display
-# fuck, why does matplotlib make making interaction so difficult?
-# I just want you to MAKE ME A PLOT GODDAMMIT
-
-
-fs = 44100                  #sample rate to open the card at
-block_length = 44100//(24) #given a known sample rate, defines how long a single window is (
-s = Stream(sample_rate=fs, block_length=block_length, callback=pysoundcard_callback)
+fs = 44100                 #sample rate to open the card at. Your card probably has a fixed set of these.
+block_length = 44100//(12) #given a known sample rate, defines how long a single window is
+s = Stream(sample_rate=fs, block_length=block_length, callback=pysoundcard_callback, output_device=False)
 print("starting soundcard")
 s.start()
 
-#plt.ion()
-#plt.show(block=False) #block
-# fuck ..there's no way to both block
-from threading import Thread
-# of course ,putting shit on another thread doesn't hardly help...
+#TODO: if I need to use a thread anyway, put the stream reader in a thread so I can control block reads
+#TODO: memoize the zeros we feed back to the soundcard
 
+# fuck ..there's no way to display the matplotlib GUI and spin in a readloop in the same thread
+from threading import Thread
+
+RUNNING = True
 def fix_it():
 	"Work around some kind of overdriving bug in alsa"
-	while True:
+	global RUNNING
+	while RUNNING:
 		if not s.is_active():
 			print("Soundcard crashed. resetting:")
-			#time.sleep(22)
-			s.stop()
+			s.stop()  #pysoundcard has a state glitch: it demands I stop it before starting it again, even tho is_active() might say False
 			s.start()
-		time.sleep(2)
+		time.sleep(1)
 FIXIT = Thread(target=fix_it)
 FIXIT.start()
 
-
 plt.show()
+RUNNING = False
+FIXIT.join()
