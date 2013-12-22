@@ -13,9 +13,16 @@ from pysoundfile import *
 #from scipy import *
 
 fig, ax = plt.subplots()
-#
+fig.patch.set_facecolor('black')
+ax.title.set_color('blue')
+ax.patch.set_facecolor('black')
+ax.spines['bottom'].set_color('silver')
+ax.spines['top'].set_color('silver')
+ax.xaxis.label.set_color('gray')
+ax.yaxis.label.set_color('gray')
+ax.tick_params(axis='x', colors='red')
 
-l, = plt.plot([1], lw=.5, color='green') #initialize some space for us to write to
+l, = plt.plot([], lw=.5, color='green') #initialize some space for us to write to
 plt.xlabel("time (s)")
 plt.ylabel("amplitude")
 
@@ -36,10 +43,9 @@ def pysoundcard_callback(in_data, frame_count, time_info, status):
 	# but the upper channels are empty and the lower ones are dupes?
 	# weird...
 	signal = in_data.mean(axis=1) #sometimes in_data comes with multiple channels. in lieu of knowing what to do with them
-	signal/=bounds(signal) #normalize to -1 to 1
+	signal/= bounds(signal) #normalize to -1 to 1
 	
 	print("energy:", abs(signal).sum())
-	print(in_data.shape)
 
 	#import time as _time
 	#_time.sleep(.1) # artificially cause underruns
@@ -51,8 +57,8 @@ def pysoundcard_callback(in_data, frame_count, time_info, status):
 	ax.set_xlim((time[0], time[-1]))
 	ax.set_ylim((-1, 1))
 
-	fig.canvas.draw() #TODO: can this be draw_idle?
-
+	fig.canvas.draw() #This step might be expensive...
+	
 	return (None, continue_flag)
 	#return (np.zeros_like(in_data), continue_flag)
 
