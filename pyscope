@@ -70,6 +70,7 @@ fs = 44100                 #sample rate to open the card at. Your card probably 
 block_length = 44100//(12) #given a known sample rate, defines how long a single window is
 s = Stream(sample_rate=fs, block_length=block_length, callback=pysoundcard_callback, output_device=False)
 print("starting soundcard")
+
 s.start()
 
 #TODO: if I need to use a thread anyway, put the stream reader in a thread so I can control block reads

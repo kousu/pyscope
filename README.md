@@ -9,12 +9,13 @@ Built on [SciPy](http://scipy.org) and [PySoundCard](https://github.com/bastibe/
 
 ## Installation
 
-This program is a python3 and Linux application,
+First, clone this repo.
 
-You need to get SciPy and PySoundCard. SciPy is almost certainly available in your distribution's package manager.
-PySoundCard might not be, but it is on pipi, so you can install it with "sudo pip install PySoundCard".
+If you can the dependencies installed on your system, pyscope should run on Windows, Linux, and OS X.
 
-Then, just clone this repo.
+Pyscope is a py3k application, so you need to get SciPy and PySoundCard installed in their python3 forms.
+SciPy is almost certainly available in your distribution's package manager, but
+PySoundCard might not be. However, it is on pipi and you can install it with "sudo pip install PySoundCard".
 
 ## Running
 
