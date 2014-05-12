@@ -22,3 +22,5 @@ and let it help you shape your ideas.
 * [ ] find how to index into generators (see above)
 * [ ] implement DFT views
   * it's starting to look like maybe I am cloning Friture?
+
+* [ ] investigate http://bastibe.de/2013-05-30-speeding-up-matplotlib.html

@@ -1,16 +1,50 @@
-#!/usr/bin/python3
+#!/usr/bin/env python3
+# scipy+portaudio-based oscilloscope
+# Copyright (c) 2013, <nick@kousu.ca>
+#
+# An oscilloscope makes waveforms--e.g. sound, circuitry--visible.
+# The way an oscilloscope works is by taking fixed sized windows of samples,
+# typically adjacent windows but maybe not (e.g. if soundcard underruns occur)
+# make the window wider to be able to see lower frequencies
+# make the sample rate higher to be able to see higher frequencies
+#
+# This uses your soundcard, but a soundcard is just an analogue-to-digital
+# converter, so if you strip a headphone cord and attach multimeter probes,
+# you can debug circuitry on the cheap! But make sure you stuff a sturdy
+# surge protector and gain in the way first so that you do not blow your laptop.
+#
+# Redistribution and use in source and binary forms, with or without modification,
+# are permitted provided that the redistribution comes with:
+# 1. The above copyright notice
+# 2. The below disclaimer
+# 3. This list of conditions
+# If the redistribution includes source code, you may include the redistribution
+# of these terms within the code. Otherwise, you must include these terms within
+# associated documented DISTRIBUTED WITH the redistribution.
+# 
+# THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+# AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+# IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+# ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE
+# LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+# DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
+# SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
+# CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
+# OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+# OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+#
+# If you fry your motherboard trying to use this, it is on your head, not mine!
+
 
 import numpy as np
 import matplotlib.pyplot as plt
+from pysoundcard import *
 
 #from matplotlib.widgets import Slider, Button, RadioButtons
+# TODO: provide some matplotlib widgets on the output screen to control things like sample rate, colour, etc.
+# TODO: wrap this all up in a main(), or better yet an oscilloscope widget
+# TODO: compare against friture, which already has an oscilloscope widget built on scipy (but not on matplotlib)
 
-import time
-
-from pysoundcard import *
-from pysoundfile import *
-
-#from scipy import *
 
 fig, ax = plt.subplots()
 fig.patch.set_facecolor('black')
@@ -25,7 +59,6 @@ ax.tick_params(axis='x', colors='red')
 l, = plt.plot([], lw=.5, color='green') #initialize some space for us to write to
 plt.xlabel("time (s)")
 plt.ylabel("amplitude")
-
 
 def bounds(signal):
 	if signal.dtype == np.int16:
@@ -45,27 +78,31 @@ def pysoundcard_callback(in_data, frame_count, time_info, status):
 	signal = in_data.mean(axis=1) #sometimes in_data comes with multiple channels. in lieu of knowing what to do with them
 	signal/= bounds(signal) #normalize to -1 to 1
 	
-	print("energy:", abs(signal).sum())
-
+	#print("energy:", abs(signal).sum()) #DEBUG
+	
+        # DEBUG: artificially cause underruns
 	#import time as _time
-	#_time.sleep(.1) # artificially cause underruns
+	#_time.sleep(.1)
 	
 	#NB: shadows 'time' module
-	time = np.arange(0, len(signal)) / fs #TODO: don't reference a global! #TODO: cache this t
+	time = np.arange(0, len(signal)) / fs #TODO: don't shadow time!
+	                                      #TODO: cache this shit
+	
+        # plot the current sample window
+        # matplotlib takes care of down/up sampling to your screensize :)
 	l.set_data((time, signal))
 	
 	ax.set_xlim((time[0], time[-1]))
 	ax.set_ylim((-1, 1))
-
+	
 	fig.canvas.draw() #This step might be expensive...
 	
 	return (None, continue_flag)
 	#return (np.zeros_like(in_data), continue_flag)
 
-fs = 44100                 #sample rate to open the card at. Your card probably has a fixed set of these.
-block_length = fs//(16) #given a known sample rate, defines how long a single window is
-#block_length =2000
-
+fs = 44100              # sample rate to open the card at. Your card probably has a fixed set of these.
+block_length = fs//(16) # given a known sample rate, defines how long a single window is
+                        #  16 is ____________ (??).
 
 RUNNING = True
 def fix_it():
@@ -75,17 +112,12 @@ def fix_it():
 		s.stop() #pysoundcard has a state glitch: it demands I stop it before starting it again, even tho is_active() might say False
 		s.start()
 
-
 print("Starting soundcard:")
 dev = default_input_device();
-dev['input_channels'] = 1; #PortAudio wants everything to have 32 channels by default
+dev['input_channels'] = 1; #PortAudio wants everything to have 32 channels by default; we want 1!
 api = list(apis())[dev['host_api_index']]
 s = Stream(sample_rate=fs, block_length=block_length, input_device=dev, callback=pysoundcard_callback, finished_callback=fix_it, output_device=False)
 plt.title("pyscope: API '%s' device '%s'" % (api['name'], dev['name']))
 s.start()
-
-# fuck ..there's no way to display the matplotlib GUI and spin in a readloop in the same thread
-from threading import Thread
-
-plt.show()
-RUNNING = False
+plt.show() #blocks here
+#RUNNING = False # TODO: is this needed? it doesn't seem to be needed...
