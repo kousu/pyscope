@@ -95,7 +95,7 @@ def pysoundcard_callback(in_data, frame_count, time_info, status):
 	ax.set_xlim((time[0], time[-1]))
 	ax.set_ylim((-1, 1))
 	
-	fig.canvas.draw() #This step might be expensive...
+	fig.canvas.draw_idle() #This step might be expensive...
 	
 	return (None, continue_flag)
 	#return (np.zeros_like(in_data), continue_flag)
